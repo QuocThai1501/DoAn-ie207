@@ -4,13 +4,8 @@ from sklearn.metrics.pairwise import linear_kernel
 from unidecode import unidecode
 import re
 from datetime import datetime
-import time
 
-class HotelRecommenderv1:
-    def __init__(self, hotels_df, tourists_df):
-        self.hotels_data = hotels_df.copy()
-        self.tourists_data = tourists_df.copy()
-
+class BaseHotel: # class cha cho 2 version demo 1 và 2
     # xử lý chuỗi
     def preprocess_text(self, text):
         if pd.isnull(text):
@@ -24,16 +19,6 @@ class HotelRecommenderv1:
             return int(price)
         except:
             return None
-
-    # xử lý khoảng giá tourist
-    def parse_budget_range(self, budget_str):
-        try:
-            parts = budget_str.replace(" VND", "").split("-")
-            min_budget = int(parts[0].replace(".", "").strip())
-            max_budget = int(parts[1].replace(".", "").strip())
-            return min_budget, max_budget
-        except:
-            return None, None
 
     # xử lý khoảng giá tourist
     def parse_budget_range(self, budget_str):
@@ -68,10 +53,46 @@ class HotelRecommenderv1:
             return (0, 24)
 
     # xử lý khoảng thời gian    
-    def time_ranges_overlap(range1, range2):
+    def time_ranges_overlap(self, range1, range2):
         start1, end1 = range1
         start2, end2 = range2
         return max(start1, start2) < min(end1, end2)
+
+ # Lấy các khách sạn khác trong cùng tỉnh nhưng không nằm trong recommendations
+    def get_other_hotels(self, recommendations, location):
+        hotel_data = self.hotels_data.copy()
+
+        if recommendations is None or recommendations.empty:
+            # Nếu không có recommendations, trả về tất cả hotels trong tỉnh
+            other_hotels = hotel_data[
+                hotel_data['Province'].str.lower() == location.lower()
+            ]
+        else:
+            recommended_urls = recommendations['Hotel URL']
+            other_hotels = hotel_data[
+                (hotel_data['Province'].str.lower() == location.lower()) &
+                (~hotel_data['Hotel URL'].isin(recommended_urls))
+            ]
+
+        # Tạo danh sách các khách sạn khác
+        other_rows = other_hotels[[
+            'Hotel URL', 'Hotel Name', 'Overview Price', 'Address',
+            'Overall Rating', 'Staff', 'Facilities', 'Cleanliness',
+            'Comfort', 'Value for Money', 'Location', 'Free Wifi',
+            'Popular Facilities', 'Checkin Time', 'Checkout Time', 'Province'
+        ]].values.tolist()
+
+    # Tạo DataFrame kết quả
+        columns = ['Hotel URL', 'Hotel Name', 'Overview Price', 'Address', 'Overall Rating', 'Staff', 'Facilities', 'Cleanliness', 
+                'Comfort', 'Value for Money', 'Location', 'Free Wifi', 'Popular Facilities', 'Checkin Time', 'Checkout Time', 'Province']
+        return pd.DataFrame(other_rows, columns=columns)
+
+
+
+class HotelRecommenderv1(BaseHotel):
+    def __init__(self, hotels_df, tourists_df):
+        self.hotels_data = hotels_df.copy()
+        self.tourists_data = tourists_df.copy()
 
 
 
@@ -89,7 +110,6 @@ class HotelRecommenderv1:
 
         tourist_data['combined_text'] = tourist_data.apply(combine_text, axis=1)
         tourist_data['combined_text'] = tourist_data['combined_text'].apply(lambda x: self.preprocess_text(x))
-
 
     # Tạo TF-IDF matrix cho cả tourist và hotel
         corpus = tourist_data['combined_text'].tolist() + hotel_data['Popular Facilities'].tolist()
@@ -149,35 +169,81 @@ class HotelRecommenderv1:
                         row['Comfort'], row['Value for Money'], row['Location'], row['Free Wifi'],
                         row['Popular Facilities Original'], row['Checkin Time'], row['Checkout Time'], row['Province']
                     ])
-            # if len(recommendations) == num_hotels:
-            #     break
 
     # Tạo DataFrame kết quả
         columns = ['Hotel URL', 'Hotel Name', 'Overview Price', 'Address', 'Overall Rating', 'Staff', 'Facilities', 'Cleanliness', 
                 'Comfort', 'Value for Money', 'Location', 'Free Wifi', 'Popular Facilities', 'Checkin Time', 'Checkout Time', 'Province']
         return pd.DataFrame(recommendations, columns=columns)
 
+    
 
+class HotelRecommenderv2(BaseHotel):
+    def __init__(self, hotels_df, tourists_df):
+        self.hotels_data = hotels_df.copy()
+        self.tourists_data = tourists_df.copy()
 
-    # Lấy các khách sạn khác trong cùng tỉnh nhưng không nằm trong recommendations
-    def get_other_hotels(self, recommendations, location):
-        recommended_urls = recommendations['Hotel URL']  # Hotel URL đã đề xuất
+    
+
+    def get_recommendations_tfidf_input(self, facilities_input, location, checkin_range, checkout_range, min_budget, max_budget):
         hotel_data = self.hotels_data.copy()
-        print('số hotel: ', recommended_urls)
-        other_hotels = hotel_data[
-            (hotel_data['Province'].str.lower() == location.lower()) &
-            (~hotel_data['Hotel URL'].isin(recommended_urls))
-        ]
+    
+        # Tiền xử lý dữ liệu
+        combined_text = ' '.join([str(f) for f in facilities_input if pd.notna(f)])
+        hotel_data['Popular Facilities Original'] = hotel_data['Popular Facilities']
+        hotel_data['Popular Facilities'] = hotel_data['Popular Facilities'].apply(lambda x: self.preprocess_text(x))
+        combined_text = self.preprocess_text(combined_text)
 
-        # Tạo danh sách các khách sạn khác
-        other_rows = other_hotels[[
-            'Hotel URL', 'Hotel Name', 'Overview Price', 'Address',
-            'Overall Rating', 'Staff', 'Facilities', 'Cleanliness',
-            'Comfort', 'Value for Money', 'Location', 'Free Wifi',
-            'Popular Facilities', 'Checkin Time', 'Checkout Time', 'Province'
-        ]].values.tolist()
+        # Tạo TF-IDF matrix
+        corpus = [combined_text] + hotel_data['Popular Facilities'].tolist()
+        vectorizer = TfidfVectorizer()
+        tfidf_matrix = vectorizer.fit_transform(corpus)
 
-    # Tạo DataFrame kết quả
-        columns = ['Hotel URL', 'Hotel Name', 'Overview Price', 'Address', 'Overall Rating', 'Staff', 'Facilities', 'Cleanliness', 
-                'Comfort', 'Value for Money', 'Location', 'Free Wifi', 'Popular Facilities', 'Checkin Time', 'Checkout Time', 'Province']
-        return pd.DataFrame(other_rows, columns=columns)
+        # Tính toán độ tương đồng
+        cosine_sim = linear_kernel(tfidf_matrix[0], tfidf_matrix[1:]).flatten()
+        sim_scores = list(enumerate(cosine_sim))
+        sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+
+        recommendations = []
+        for idx, score in sim_scores:
+            row = hotel_data.iloc[idx]
+            
+            # Kiểm tra location
+            if row['Province'].lower() != location.lower():
+                continue
+                
+            # Kiểm tra giá
+            price = self.parse_price(row['Overview Price'])
+            if not (min_budget <= price <= max_budget):
+                continue
+                
+            # Kiểm tra thời gian check-in/out
+            hotel_checkin = self.parse_time_range(row['Checkin Time'])
+            hotel_checkout = self.parse_time_range(row['Checkout Time'])
+            
+            if not self.time_ranges_overlap(hotel_checkin, checkin_range):
+                continue
+            if not self.time_ranges_overlap(hotel_checkout, checkout_range):
+                continue
+                
+            recommendations.append({
+                'Hotel URL': row['Hotel URL'],
+                'Hotel Name': row['Hotel Name'],
+                'Overview Price': row['Overview Price'],
+                'Address': row['Address'],
+                'Overall Rating': row['Overall Rating'],
+                'Staff': row['Staff'],
+                'Facilities': row['Facilities'],
+                'Cleanliness': row['Cleanliness'],
+                'Comfort': row['Comfort'],
+                'Value for Money': row['Value for Money'],
+                'Location': row['Location'],
+                'Free Wifi': row['Free Wifi'],
+                'Popular Facilities': row['Popular Facilities Original'],
+                'Checkin Time': row['Checkin Time'],
+                'Checkout Time': row['Checkout Time'],
+                'Province': row['Province'],
+                'Similarity Score': score,
+                'Parsed Price': price
+            })
+
+        return pd.DataFrame(recommendations)

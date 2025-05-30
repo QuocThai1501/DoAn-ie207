@@ -1,15 +1,15 @@
-# chạy bằng lệnh: streamlit run demo.py  
+# chạy bằng lệnh: streamlit run demo1.py  
 import pandas as pd
 import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
-
 import time
 from hotel_recommender import HotelRecommenderv1
+
 #---------------------------------------------------------------------------------------------------------------------#
 # Đọc dữ liệu du khách và khách sạn từ file CSV.
-new_hotels = pd.read_csv('hotels_data_final.csv')
-new_tourists = pd.read_csv('tourist_dataset_10k.csv')
+new_hotels = pd.read_csv('../hotels_data_final.csv')
+new_tourists = pd.read_csv('../tourist_dataset_10k.csv')
 
 # class khuyến nghị
 recommender = HotelRecommenderv1(new_hotels, new_tourists)
@@ -144,7 +144,7 @@ if user_id is not None:
         other_hotels = recommender.get_other_hotels(st.session_state.recommendations, location)
         if not other_hotels.empty:
             
-            # Hiển thị khách sạn khác ở vũng tàu
+            # Hiển thị khách sạn khác
             st.success(f"Found {len(other_hotels)} other hotels in {location}")
             # Initialize session state for other hotels pagination
             if 'other_show_count' not in st.session_state:
