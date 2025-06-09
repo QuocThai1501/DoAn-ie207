@@ -36,9 +36,10 @@ with st.sidebar:
             with st.expander("👤 User Profile"):
                 st.markdown(f"""
                 - **Name:** {user_info['name']}
+                - **Preferred Location:** {user_info['preferred_location']}                
                 - **Budget:** {user_info['budget_range']}
-                - **Preferred Location:** {user_info['preferred_location']}
                 - **Requirements:** {user_info['requirements']}
+                - **Preferred Facilities:** {user_info['preferred_facilities']}
                 - **Check-in Preference:** {user_info['checkin_time_preference']}
                 - **Check-out Preference:** {user_info['checkout_time_preference']}
                 - **Special Requests:** {user_info['special_requests'] if pd.notna(user_info['special_requests']) else 'None'}
@@ -69,7 +70,7 @@ if user_id is not None:
         st.write(f"**Requirements:** {requirements_text}")
         # Hiển thị facilities - nếu không có thì ghi "Không có"
         facilities_text = user_info['preferred_facilities'] if pd.notna(user_info['preferred_facilities']) else "Không có"
-        st.write(f"**Facilities:** {facilities_text}")
+        st.write(f"**Preferred Facilities:** {facilities_text}")
         
         # Hiển thị special requests - nếu không có thì ghi "Không có"
         special_requests_text = user_info['special_requests'] if pd.notna(user_info['special_requests']) else 'Không có'

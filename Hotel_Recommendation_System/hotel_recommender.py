@@ -4,6 +4,9 @@ from sklearn.metrics.pairwise import linear_kernel
 from unidecode import unidecode
 import re
 from datetime import datetime
+import os, torch
+import numpy as np
+from sentence_transformers import SentenceTransformer, util
 
 class BaseHotel: # class cha cho 2 version demo 1 và 2
     # xử lý chuỗi
@@ -247,3 +250,135 @@ class HotelRecommenderv2(BaseHotel):
             })
 
         return pd.DataFrame(recommendations)
+
+
+
+class HotelRecommenderBERT(BaseHotel):
+    def __init__(self, hotels_df, model_name='sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'):
+        self.hotels_data = hotels_df.copy()
+        self.model = SentenceTransformer(model_name)
+        self.hotel_embeddings = self.load_embeddings('hotel_embeddings.npy')
+
+    def load_embeddings(self, file_path='hotel_embeddings.npy'):
+        if os.path.exists(file_path):
+            embeddings = torch.tensor(np.load(file_path))
+        else:
+            embeddings = self.encode_hotels()
+            np.save(file_path, embeddings.cpu().numpy())
+        return embeddings
+
+    def encode_hotels(self):
+        def generate_hotel_text(row):
+            # Chỉ tập trung encode tiện ích (địa chỉ + rating đã lọc trước rồi)
+            text = f"có {row['Popular Facilities']}"
+            return text
+
+        # Áp dụng lên toàn bộ DataFrame
+        texts = self.hotels_data.apply(generate_hotel_text, axis=1)
+        
+        # Encode thành embedding tensor
+        embeddings = self.model.encode(texts, convert_to_tensor=True)
+        return embeddings
+
+    def extract_address_phrases(self, text):
+        patterns = [
+            r"(quận\s+[a-zàáảãạăâđêếểễệôơưùúủũụưăâêôơế\d\-]+)",
+            r"(phường\s+[a-zàáảãạăâđêếểễệôơưùúủũụưăâêôơế\d\-]+)",
+        ]
+        matches = []
+        for pattern in patterns:
+            matches.extend(re.findall(pattern, text.lower()))
+        return matches
+
+    def split_address_rating_features(self, input_text, address_keywords, rating_keywords):
+        tokens = [t.strip() for t in input_text.lower().split(',')]
+
+        address_parts = []
+        rating_parts = []
+        feature_parts = []
+
+        for token in tokens:
+            if any(kw in token for kw in address_keywords):
+                address_parts.append(token)
+            elif any(kw in token for kw in rating_keywords):
+                rating_parts.append(token)
+            else:
+                feature_parts.append(token)
+
+        return ' '.join(address_parts), ' '.join(rating_parts), ' '.join(feature_parts)
+
+    def get_recommendations_bert(self, input_text, location, checkin_range, checkout_range, min_budget, max_budget):
+        hotel_data = self.hotels_data.copy()
+
+        address_keywords = ['số', 'quận', 'phường', 'đường', 'tp', 'thành phố', 'ward', 'district', 'city']
+        rating_keywords = ['xuất sắc', 'tốt', 'trung bình', 'kém']
+
+        # Tách input thành 3 cụm: địa chỉ, đánh giá, tiện ích
+        address_part, rating_part, feature_part = self.split_address_rating_features(input_text, address_keywords, rating_keywords)
+
+        # ======= LỌC ĐỊA CHỈ =======
+        address_phrases = self.extract_address_phrases(address_part)
+        if address_phrases:
+            pattern = '|'.join(map(re.escape, address_phrases))
+            hotel_data = hotel_data[hotel_data['Address'].str.lower().str.contains(pattern)]
+
+        # ======= LỌC ĐÁNH GIÁ =======
+        if 'xuất sắc' in rating_part:
+            hotel_data = hotel_data[hotel_data['Overall Rating'] >= 9]
+        elif 'tốt' in rating_part:
+            hotel_data = hotel_data[(hotel_data['Overall Rating'] >= 8) & (hotel_data['Overall Rating'] < 9)]
+        elif 'trung bình' in rating_part:
+            hotel_data = hotel_data[(hotel_data['Overall Rating'] >= 6) & (hotel_data['Overall Rating'] < 8)]
+        elif 'kém' in rating_part:
+            hotel_data = hotel_data[hotel_data['Overall Rating'] < 6]
+
+        # ======= TÍNH SIMILARITY CHO TIỆN ÍCH =======
+        if feature_part.strip():
+            input_text_embedding = self.model.encode(feature_part, convert_to_tensor=True)
+            filtered_embeddings = self.hotel_embeddings[hotel_data.index]
+            cosine_scores = util.pytorch_cos_sim(input_text_embedding, filtered_embeddings)[0]
+            cosine_scores_np = cosine_scores.cpu().numpy()
+        else:
+            cosine_scores_np = np.ones(len(hotel_data))  # Nếu không có tiện ích, similarity mặc định = 1
+
+        matched_hotels = []
+
+        # ======= VÒNG LẶP LỌC CHI TIẾT =======
+        for idx, (_, row) in enumerate(hotel_data.iterrows()):
+            similarity = cosine_scores_np[idx]
+            if similarity <= 0.5:
+                continue  # bỏ những khách sạn tương đồng thấp
+
+            # Lọc theo location (tỉnh/thành phố)
+            if row['Province'].lower() != location.lower():
+                continue
+
+            # Lọc theo giá
+            price = self.parse_price(row['Overview Price'])
+            if price is None or not (min_budget <= price <= max_budget):
+                continue
+
+            # Lọc theo check-in time
+            hotel_checkin = self.parse_time_range(row['Checkin Time'])
+            if not self.time_ranges_overlap(hotel_checkin, checkin_range):
+                continue
+
+            # Lọc theo check-out time
+            hotel_checkout = self.parse_time_range(row['Checkout Time'])
+            if not self.time_ranges_overlap(hotel_checkout, checkout_range):
+                continue
+
+            # Giữ lại kết quả
+            row_copy = row.copy()
+            row_copy['similarity_score'] = similarity
+            matched_hotels.append(row_copy)
+
+        # Chuyển kết quả thành DataFrame
+        if matched_hotels:
+            result_df = pd.DataFrame(matched_hotels)
+            result_df = result_df.sort_values(by='similarity_score', ascending=False)
+        else:
+            result_df = pd.DataFrame(columns=list(self.hotels_data.columns) + ['similarity_score'])
+
+        return result_df
+

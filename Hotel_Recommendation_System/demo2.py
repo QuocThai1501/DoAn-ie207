@@ -41,7 +41,7 @@ with st.sidebar:
     with st.form("search_form"):
         # Thông tin cơ bản
         st.subheader("Basic Information")
-        selected_location = st.selectbox("Destination", locations, index=locations.index("Hồ Chí Minh") if "Hồ Chí Minh" in locations else 0)
+        selected_location = st.selectbox("Location", locations, index=locations.index("Hồ Chí Minh") if "Hồ Chí Minh" in locations else 0)
         
         # Budget range
         st.subheader("Budget Range (VND)")
