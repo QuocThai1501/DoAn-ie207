@@ -24,7 +24,17 @@ st.set_page_config(
 # Sidebar
 with st.sidebar:
     st.header("👤 User Information")
+
+    prev_input = st.session_state.get("prev_user_id_input", "")
     user_id_input = st.text_input("Enter User ID", "")
+
+    # Nếu user nhập khác với lần trước thì reset các kết quả cũ
+    if user_id_input != prev_input:
+        st.session_state.prev_user_id_input = user_id_input
+        for key in ['recommendations', 'show_count', 'other_show_count']:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.rerun()  # Reset UI để làm mới giao diện
 
     # Ràng buộc: Chỉ khi nhập số nguyên mới xử lý
     if user_id_input.strip().isdigit():
@@ -40,9 +50,9 @@ with st.sidebar:
                 - **Budget:** {user_info['budget_range']}
                 - **Requirements:** {user_info['requirements']}
                 - **Preferred Facilities:** {user_info['preferred_facilities']}
+                - **Special Requests:** {user_info['special_requests'] if pd.notna(user_info['special_requests']) else 'None'}                
                 - **Check-in Preference:** {user_info['checkin_time_preference']}
                 - **Check-out Preference:** {user_info['checkout_time_preference']}
-                - **Special Requests:** {user_info['special_requests'] if pd.notna(user_info['special_requests']) else 'None'}
                 """)
         else:
             st.error("User ID not found.")

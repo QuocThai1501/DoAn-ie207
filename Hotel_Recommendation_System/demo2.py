@@ -25,7 +25,7 @@ locations = [
     "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình",
     "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La",
     "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang",
-    "Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"
+    "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"
 ]
 #---------------------------------------------------------------------------------------------------------------------#
 # Cấu hình trang
@@ -41,7 +41,7 @@ with st.sidebar:
     with st.form("search_form"):
         # Thông tin cơ bản
         st.subheader("Basic Information")
-        selected_location = st.selectbox("Location", locations, index=locations.index("Hồ Chí Minh") if "Hồ Chí Minh" in locations else 0)
+        selected_location = st.selectbox("Location", locations, index=locations.index("TP. Hồ Chí Minh") if "TP. Hồ Chí Minh" in locations else 0)
         
         # Budget range
         st.subheader("Budget Range (VND)")
@@ -89,7 +89,7 @@ with st.sidebar:
         
         # Additional requirements
         st.subheader("Additional Preferences")
-        special_requests = st.text_area("Special requests", placeholder="e.g., View biển, Phòng yên tĩnh...")
+        special_requests = st.text_area("Special requests", placeholder="View biển, Phòng yên tĩnh...")
         submitted = st.form_submit_button("Find Hotels")
         
         if submitted:
@@ -102,6 +102,13 @@ with st.sidebar:
                 'facilities': selected_facilities,
                 'special_requests': special_requests
             }
+            # Xoá các kết quả hiển thị cũ nếu có
+            for key in ['recommendations', 'show_count', 'other_show_count']:
+                if key in st.session_state:
+                    del st.session_state[key]
+            
+            # Gọi rerun để làm mới giao diện
+            st.rerun()
             st.success("Search criteria saved!")
 
 # Main content

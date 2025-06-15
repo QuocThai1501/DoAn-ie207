@@ -25,7 +25,7 @@ locations = [
     "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình",
     "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La",
     "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang",
-    "Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"
+    "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"
 ]
 #---------------------------------------------------------------------------------------------------------------------#
 # Cấu hình trang
@@ -82,6 +82,13 @@ with st.sidebar:
                 'checkout_range': (checkout_start, checkout_end),
                 'special_requests': special_requests
             }
+            # Xoá các kết quả hiển thị cũ nếu có
+            for key in ['recommendations', 'show_count', 'other_show_count']:
+                if key in st.session_state:
+                    del st.session_state[key]
+
+            # Gọi rerun để làm mới giao diện
+            st.rerun()
             st.success("Search criteria saved!")
 
 # Main content

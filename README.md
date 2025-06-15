@@ -10,10 +10,10 @@
 | 1   | Lê Quốc Thái        | 22521318 |
 | 2   | Lê Thái Khánh Ngân  | 22520930 |
 
-## Danh sách liên kết  
-- **Drive:** [https://drive.google.com/drive/folders/1zlo_rdoK3LOt8TYgrQh-kYfLOD1Cw8Va?usp=sharing]
+## Danh sách liên kết
+
+- **Drive:** [https://drive.google.com/drive/folders/1F7JppmD3FCvqKGlkcCIHELLuSxC2Xr70?usp=sharing]
 - **Github:** [https://github.com/QuocThai1501/DoAn-ie207.git]
-- **Link đến video demo:** Đang bổ sung
 
 ## Tổ chức folder
 
@@ -49,17 +49,9 @@ git clone https://github.com/QuocThai1501/DoAn-ie207.git
      cd Hotel_Recommendation_System
      streamlit run demo2.py
      ```
-
-   - Terminal 3 (khởi chạy demo 3):
-     ```bash
-     cd Hotel_Recommendation_System
-     streamlit run demo3.py
-     ```
      
 ### Hướng dẫn sử dụng hệ thống
 
 **Demo 1**: Nhập giá trị ID du khách (từ 1 đến 10000) vào ô "Enter User ID" ở sidebar rồi nhấn enter. Hệ thống sẽ trích xuất thông tin của du khách có ID vừa được nhập và hiển thị ở "User Profile" bên dưới. Ở phía giao diện chính, các tiêu chí được dùng để tìm khách sạn sẽ hiển thị ở "Your Search Criteria". Cuối cùng cần click vào nút "Search Hotels" để tìm và hiển thị khách sạn đáp ứng các tiêu chí.
 
 **Demo 2**: Kích hoạt các tiêu chí lọc ở sidebar, gồm: địa điểm, ngân sách, thời gian nhận/trả phòng, và lựa chọn các tiện ích yêu thích ở "Facilities and Requirements". Ngoài ra có thể tự nhập vào các tiện ích khác ở "Additional Preferences". Sau đó click "Find Hotels" để hệ thống lưu thông tin, rồi click "Search Hotels" để hiển thị danh sách khách sạn phù hợp.
-
-**Demo 3**: Kích hoạt các tiêu chí lọc ở sidebar tương tự Demo 2. Ô "Additional Preferences" cho phép nhập vào một câu với các yêu cầu về địa chỉ, mức độ đánh giá và các tiện ích mong muốn. Sau đó click "Find Hotels" để hệ thống lưu thông tin, rồi click "Search Hotels" để hiển thị danh sách khách sạn phù hợp.
